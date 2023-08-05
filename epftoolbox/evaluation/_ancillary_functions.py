@@ -26,21 +26,24 @@ def _process_inputs_for_metrics(p_real, p_pred):
     
     # Checking that both arrays are of the same type
     if type(p_real) != type(p_pred):
-        raise TypeError('p_real and p_pred must be of the same type. p_real is of type {}'.format(type(p_real)) +
-            ' and p_pred of type {}'.format(type(p_pred)))
+        raise TypeError(
+            (
+                f'p_real and p_pred must be of the same type. p_real is of type {type(p_real)}'
+                + f' and p_pred of type {type(p_pred)}'
+            )
+        )
 
     # Checking that arrays are of the allowed types
-    if type(p_real) != pd.DataFrame and \
-       type(p_real) != pd.Series and \
-       type(p_real) != np.ndarray:
-        raise TypeError('p_real and p_pred must be either a pandas.DataFrame, a pandas.Serie, or ' +
-        ' a numpy.aray. They are of type {}'.format(type(p_real)))
+    if type(p_real) not in [pd.DataFrame, pd.Series, np.ndarray]:
+        raise TypeError(
+            f'p_real and p_pred must be either a pandas.DataFrame, a pandas.Serie, or  a numpy.aray. They are of type {type(p_real)}'
+        )
 
     # Transforming dataset if it is a pandas.Series to pandas.DataFrame
     if type(p_real) == pd.Series:
         p_real = p_real.to_frame()
         p_pred = p_pred.to_frame()
-    
+
     # Checking that both datasets share the same indices
     if type(p_real) == pd.DataFrame:
         if not (p_real.index == p_pred.index).all():
@@ -79,11 +82,9 @@ def naive_forecast(p_real, m=None, n_prices_day=24):
     # Init the naive forecast
     if m is None or m == 'W':
         index = p_real.index[n_prices_day * 7:]
-        Y_pred = pd.DataFrame(index=index, columns=p_real.columns)
     else:
         index = p_real.index[n_prices_day:]
-        Y_pred = pd.DataFrame(index=index, columns=p_real.columns)
-
+    Y_pred = pd.DataFrame(index=index, columns=p_real.columns)
     # If m is none the standard naive for EPF is built
     if m is None:
 
@@ -150,7 +151,7 @@ def _transform_input_prices_for_naive_forecast(p_real, m, freq):
 
     # Ensure that m value is correct
     if m not in ['D', 'W', None]: 
-        raise ValueError('m argument has to be D, W, or None. Current values is {}'.format(m))    
+        raise ValueError(f'm argument has to be D, W, or None. Current values is {m}')    
 
     # Check that input data is not numpy.ndarray and naive forecast is standard
     if m is None and type(p_real) != pd.DataFrame and type(p_real) != pd.Series:
@@ -162,10 +163,13 @@ def _transform_input_prices_for_naive_forecast(p_real, m, freq):
 
     # If numpy arrays are used, ensure that there is integer number of days in the dataset
     if type(p_real) == np.ndarray and p_real.size % n_prices_day != 0:
-        raise ValueError('If numpy arrays are used, the size of p_real, i.e. the number of prices it '
-            + 'contains, should be a multiple number of {}, i.e. of the number of '.format(n_prices_day)
-            + ' prices per day. Current values is {}'.format(p_real.size))    
-    
+        raise ValueError(
+            (
+                f'If numpy arrays are used, the size of p_real, i.e. the number of prices it contains, should be a multiple number of {n_prices_day}, i.e. of the number of '
+                + f' prices per day. Current values is {p_real.size}'
+            )
+        )    
+
     # If pandas.Series are used, convert to DataFrame
     if type(p_real) == pd.Series:
         p_real = p_real.to_frame()
@@ -178,8 +182,7 @@ def _transform_input_prices_for_naive_forecast(p_real, m, freq):
         indices = pd.date_range(start='2013-01-01', periods=p_real.shape[0], freq=freq)        
         # Building DataFrame
         p_real = pd.DataFrame(p_real, index=indices)
-    
-    # If input data is pandas-based, make sure it is in correct shape
+
     elif type(p_real) == pd.DataFrame:
         # Making sure that index is of datetime format
         p_real.index = pd.to_datetime(p_real.index)
@@ -189,11 +192,15 @@ def _transform_input_prices_for_naive_forecast(p_real, m, freq):
             raise ValueError('The frequency/time periodicity of the data could not be inferred. '
                 + 'Ensure that the indices of the dataframe have a correct format and are equally separated.')
 
-        # If shape (ndays, n_prices_day), ensure that frequency of index is daily        
+        # If shape (ndays, n_prices_day), ensure that frequency of index is daily
         if p_real.shape[1] > 1 and p_real.index.inferred_freq != 'D':
-            raise ValueError('If pandas dataframes are used with arrays with shape ' 
-                + '(ndays, n_prices_day), the frequency of the time indices should be 1 day. '
-                + 'At the moment it is {}.'.format(p_real.index.inferred_freq))
+            raise ValueError(
+                (
+                    'If pandas dataframes are used with arrays with shape '
+                    + '(ndays, n_prices_day), the frequency of the time indices should be 1 day. '
+                    + f'At the moment it is {p_real.index.inferred_freq}.'
+                )
+            )
 
         # Reshaping dataframe if shape (ndays, n_prices_day)
         if p_real.shape[1] > 1:
@@ -206,10 +213,10 @@ def _transform_input_prices_for_naive_forecast(p_real, m, freq):
             # Reshaping prices
             p_real = pd.DataFrame(data=p_real.values.reshape(-1, 1), columns=['Prices'], index=indices)
 
-    # Raising error if p_real not of specified type
     else:
-        raise TypeError('Input should be of type numpy.ndarray, pandas.DataFrame, or pandas.Series' +
-            ' but it is of type {}'.format(type(p_real)))
+        raise TypeError(
+            f'Input should be of type numpy.ndarray, pandas.DataFrame, or pandas.Series but it is of type {type(p_real)}'
+        )
 
     return p_real
 

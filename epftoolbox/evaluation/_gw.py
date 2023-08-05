@@ -102,10 +102,7 @@ def GW(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
     loss1 = p_real - p_pred_1
     loss2 = p_real - p_pred_2
     tau = 1 # Test is only implemented for a single-step forecasts
-    if norm == 1:
-        d = np.abs(loss1) - np.abs(loss2)
-    else:
-        d = loss1**2 - loss2**2
+    d = np.abs(loss1) - np.abs(loss2) if norm == 1 else loss1**2 - loss2**2
     TT = np.max(d.shape)
 
     # Conditional Predictive Ability test
@@ -115,46 +112,43 @@ def GW(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
             instruments = np.stack([np.ones_like(d[:-tau, h]), d[:-tau, h]])
             dh = d[tau:, h]
             T = TT - tau
-            
+
             instruments = np.array(instruments, ndmin=2)
 
             reg = np.ones_like(instruments) * -999
             for jj in range(instruments.shape[0]):
                 reg[jj, :] = instruments[jj, :] * dh
-        
-            if tau == 1:
-                betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
-                err = np.ones((T, 1)) - np.dot(reg.T, betas)
-                r2 = 1 - np.mean(err**2)
-                GWstat[h] = T * r2
-            else:
+
+            if tau != 1:
                 raise NotImplementedError('Only one step forecasts are implemented')
 
+            betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
+            err = np.ones((T, 1)) - np.dot(reg.T, betas)
+            r2 = 1 - np.mean(err**2)
+            GWstat[h] = T * r2
     elif version == 'multivariate':
         d = d.mean(axis=1)
         instruments = np.stack([np.ones_like(d[:-tau]), d[:-tau]])
         d = d[tau:]
         T = TT - tau
-        
+
         instruments = np.array(instruments, ndmin=2)
 
         reg = np.ones_like(instruments) * -999
         for jj in range(instruments.shape[0]):
             reg[jj, :] = instruments[jj, :] * d
-    
-        if tau == 1:
-            betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
-            err = np.ones((T, 1)) - np.dot(reg.T, betas)
-            r2 = 1 - np.mean(err**2)
-            GWstat = T * r2
-        else:
+
+        if tau != 1:
             raise NotImplementedError('Only one step forecasts are implemented')
-    
+
+        betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
+        err = np.ones((T, 1)) - np.dot(reg.T, betas)
+        r2 = 1 - np.mean(err**2)
+        GWstat = T * r2
     GWstat *= np.sign(np.mean(d, axis=0))
-    
+
     q = reg.shape[0]
-    pval = 1 - scipy.stats.chi2.cdf(GWstat, q)
-    return pval
+    return 1 - scipy.stats.chi2.cdf(GWstat, q)
 
 def plot_multivariate_GW_test(real_price, forecasts, norm=1, title='GW test', savefig=False, path=''):
     """Plotting the results of comparing forecasts using the multivariate GW test. 

@@ -21,8 +21,6 @@ class MedianScaler(object):
         if len(data.shape)!=2:
             raise IndexError('Error: Provide 2-D array. First dimension is datapoints and' + 
                   ' second features')
-            return -1
-
         self.median = np.median(data, axis=0)
         self.mad = mad(data, axis=0)
         self.fitted = True

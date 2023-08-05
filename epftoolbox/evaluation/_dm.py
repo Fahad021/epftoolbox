@@ -147,10 +147,8 @@ def DM(p_real, p_pred_1, p_pred_2, norm=1, version='univariate'):
         mean_d = np.mean(d)
         var_d = np.var(d, ddof=0)
         DM_stat = mean_d / np.sqrt((1 / N) * var_d)
-        
-    p_value = 1 - stats.norm.cdf(DM_stat)
 
-    return p_value
+    return 1 - stats.norm.cdf(DM_stat)
 
 def plot_multivariate_DM_test(real_price, forecasts, norm=1, title='DM test', savefig=False, path=''):
     """Plotting the results of comparing forecasts using the multivariate DM test. 

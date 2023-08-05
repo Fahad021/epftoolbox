@@ -73,14 +73,20 @@ def _build_space(nlayer, data_augmentation, n_exogenous_inputs):
     space['In: Day'] = hp.choice('In: Day', [False, True])
     space['In: Price D-1'] = hp.choice('In: Price D-1', [False, True])
     space['In: Price D-2'] = hp.choice('In: Price D-2', [False, True])
-    space['In: Price D-3'] = hp.choice('In: Price D-3', [False, True])        
+    space['In: Price D-3'] = hp.choice('In: Price D-3', [False, True])
     space['In: Price D-7'] = hp.choice('In: Price D-7', [False, True])
 
     for n_ex in range(1, n_exogenous_inputs + 1):
-        space['In: Exog-' + str(n_ex) + ' D'] = hp.choice('In: Exog-' + str(n_ex) + ' D', [False, True])
-        space['In: Exog-' + str(n_ex) + ' D-1'] = hp.choice('In: Exog-' + str(n_ex) + ' D-1', [False, True])
-        space['In: Exog-' + str(n_ex) + ' D-7'] = hp.choice('In: Exog-' + str(n_ex) + ' D-7', [False, True])
-    
+        space[f'In: Exog-{str(n_ex)} D'] = hp.choice(
+            f'In: Exog-{str(n_ex)} D', [False, True]
+        )
+        space[f'In: Exog-{str(n_ex)} D-1'] = hp.choice(
+            f'In: Exog-{str(n_ex)} D-1', [False, True]
+        )
+        space[f'In: Exog-{str(n_ex)} D-7'] = hp.choice(
+            f'In: Exog-{str(n_ex)} D-7', [False, True]
+        )
+
     return space
 
 
@@ -141,11 +147,10 @@ def _hyperopt_objective(hyperparameters, trials, trials_file_path, max_evals, nl
 
         sMAPEVal = trials.best_trial['result']['sMAPE Val']
         sMAPETest = trials.best_trial['result']['sMAPE Test']
-        
-        print('\n\nTested {}/{} iterations.'.format(len(trials.losses()) - 1,
-              max_evals))
 
-        print('Best MAE - Validation Dataset')            
+        print(f'\n\nTested {len(trials.losses()) - 1}/{max_evals} iterations.')
+
+        print('Best MAE - Validation Dataset')
         print("  MAE: {:.1f} | sMAPE: {:.2f} %".format(MAEVal, sMAPEVal))
         print('\nBest MAE - Test Dataset')
         print("  MAE: {:.1f} | sMAPE: {:.2f} %".format(MAETest, sMAPETest))
@@ -155,7 +160,7 @@ def _hyperopt_objective(hyperparameters, trials, trials_file_path, max_evals, nl
         _build_and_split_XYs(dfTrain=dfTrain_cw, dfTest=dfTest, features=hyperparameters, 
                           shuffle_train=shuffle_train, hyperoptimization=True,
                           data_augmentation=data_augmentation, n_exogenous_inputs=n_exogenous_inputs)
-    
+
     # If required, datasets are scaled
     if hyperparameters['scaleX'] in ['Norm', 'Norm1', 'Std', 'Median', 'Invariant']:
         [Xtrain, Xval, Xtest], _ = scaling([Xtrain, Xval, Xtest], hyperparameters['scaleX'])
@@ -165,9 +170,12 @@ def _hyperopt_objective(hyperparameters, trials, trials_file_path, max_evals, nl
     else:
         scaler = None
 
-    neurons = [int(hyperparameters['neurons' + str(k)]) for k in range(1, nlayers + 1)
-               if int(hyperparameters['neurons' + str(k)]) >= 50]
-        
+    neurons = [
+        int(hyperparameters[f'neurons{str(k)}'])
+        for k in range(1, nlayers + 1)
+        if int(hyperparameters[f'neurons{str(k)}']) >= 50
+    ]
+
     np.random.seed(int(hyperparameters['seed']))
 
     # Initialize model
@@ -195,24 +203,24 @@ def _hyperopt_objective(hyperparameters, trials, trials_file_path, max_evals, nl
     if hyperparameters['scaleY'] in ['Norm', 'Norm1', 'Std', 'Median', 'Invariant']:
         Yp = scaler.inverse_transform(Yp).squeeze()
 
-    maeTest = np.mean(MAE(Ytest, Yp)) 
+    maeTest = np.mean(MAE(Ytest, Yp))
     smape_test = np.mean(sMAPE(Ytest, Yp)) * 100
 
-    # The test dataset is returned for directly evaluating the models without recalibration
-    # while performing hyperopt. However, the hyperparameter search is performed using a validation
-    # dataset
-    return_values = {'loss': mae_validation, 'MAE Val': mae_validation, 'MAE Test': maeTest,
-                     'sMAPE Val': smape_validation, 'sMAPE Test': smape_test, 
-                     'status': STATUS_OK}
-                          
-    return return_values
+    return {
+        'loss': mae_validation,
+        'MAE Val': mae_validation,
+        'MAE Test': maeTest,
+        'sMAPE Val': smape_validation,
+        'sMAPE Test': smape_test,
+        'status': STATUS_OK,
+    }
 
 def hyperparameter_optimizer(path_datasets_folder=os.path.join('.', 'datasets'), 
                              path_hyperparameters_folder=os.path.join('.', 'experimental_files'), 
                              new_hyperopt=1, max_evals=1500, nlayers=2, dataset='PJM', years_test=2, 
                              calibration_window=4, shuffle_train=1, data_augmentation=0,
                              experiment_id=None, begin_test_date=None, end_test_date=None):
-    
+
     """Function to optimize the hyperparameters and input features of the DNN. An example on how to 
     use this function is provided :ref:`here<dnnex1>`.
     
@@ -285,21 +293,24 @@ def hyperparameter_optimizer(path_datasets_folder=os.path.join('.', 'datasets'),
         experiment_id = experiment_id
 
     # Defining unique trials file name (this is an unique identifier)
-    trials_file_name = 'DNN_hyperparameters_nl' + str(nlayers) + '_dat' + str(dataset) + \
-                       '_YT' + str(years_test) + '_SF' * (shuffle_train) + \
-                       '_DA' * (data_augmentation) + '_CW' + str(calibration_window) + \
-                       '_' + str(experiment_id)
+    trials_file_name = (
+        (
+            (
+                f'DNN_hyperparameters_nl{str(nlayers)}_dat{str(dataset)}_YT{str(years_test)}'
+                + '_SF' * (shuffle_train)
+            )
+            + '_DA' * (data_augmentation)
+            + '_CW'
+        )
+        + str(calibration_window)
+        + '_'
+    ) + str(experiment_id)
 
     trials_file_path = os.path.join(path_hyperparameters_folder, trials_file_name)
 
     # If hyperparameter optimization starts from scratch, new trials object is created. If not,
     # we read existing trials object
-    if new_hyperopt:
-        trials = Trials()
-    else:
-        trials = pc.load(open(trials_file_path, "rb"))
-
-
+    trials = Trials() if new_hyperopt else pc.load(open(trials_file_path, "rb"))
     # Generate training and test datasets
     dfTrain, dfTest = read_data(dataset=dataset, years_test=years_test, path=path_datasets_folder,
                                 begin_test_date=begin_test_date, end_test_date=end_test_date)

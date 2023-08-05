@@ -118,9 +118,5 @@ def MAPE(p_real, p_pred, noNaN=False):
     mape = np.abs(p_real - p_pred) / np.abs(p_real)
 
     # Eliminating NaN values if requested and averaging
-    if noNaN:
-        mape = np.mean(mape[np.isfinite(mape)])
-    else:
-        mape = np.mean(mape)
-
+    mape = np.mean(mape[np.isfinite(mape)]) if noNaN else np.mean(mape)
     return mape

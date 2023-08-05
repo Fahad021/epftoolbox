@@ -2,6 +2,7 @@
 Example for using the LEAR model for forecasting prices with daily recalibration
 """
 
+
 # Author: Jesus Lago
 
 # License: AGPL-3.0 License
@@ -52,8 +53,8 @@ end_test_date = args.end_test_date
 
 path_datasets_folder = os.path.join('.', 'datasets')
 path_recalibration_folder = os.path.join('.', 'experimental_files')
-    
-    
+
+
 # Defining train and testing data
 df_train, df_test = read_data(dataset=dataset, years_test=years_test, path=path_datasets_folder,
                               begin_test_date=begin_test_date, end_test_date=end_test_date)
@@ -66,7 +67,9 @@ forecast_file_path = os.path.join(path_recalibration_folder, forecast_file_name)
 
 
 # Defining empty forecast array and the real values to be predicted in a more friendly format
-forecast = pd.DataFrame(index=df_test.index[::24], columns=['h' + str(k) for k in range(24)])
+forecast = pd.DataFrame(
+    index=df_test.index[::24], columns=[f'h{str(k)}' for k in range(24)]
+)
 real_values = df_test.loc[:, ['Price']].values.reshape(-1, 24)
 real_values = pd.DataFrame(real_values, index=forecast.index, columns=forecast.columns)
 

@@ -23,15 +23,21 @@ real_price_insample = df_train.loc[:, ['Price']]
 
 # Building the same datasets with shape (ndays, n_prices/day) instead 
 # of shape (nprices, 1) and display
-fc_DNN_ensemble_2D = pd.DataFrame(fc_DNN_ensemble.values.reshape(-1, 24), 
-                                  index=fc_DNN_ensemble.index[::24], 
-                                  columns=['h' + str(hour) for hour in range(24)])
-real_price_2D = pd.DataFrame(real_price.values.reshape(-1, 24), 
-                             index=real_price.index[::24], 
-                             columns=['h' + str(hour) for hour in range(24)])
-real_price_insample_2D = pd.DataFrame(real_price_insample.values.reshape(-1, 24), 
-                             index=real_price_insample.index[::24], 
-                             columns=['h' + str(hour) for hour in range(24)])
+fc_DNN_ensemble_2D = pd.DataFrame(
+    fc_DNN_ensemble.values.reshape(-1, 24),
+    index=fc_DNN_ensemble.index[::24],
+    columns=[f'h{str(hour)}' for hour in range(24)],
+)
+real_price_2D = pd.DataFrame(
+    real_price.values.reshape(-1, 24),
+    index=real_price.index[::24],
+    columns=[f'h{str(hour)}' for hour in range(24)],
+)
+real_price_insample_2D = pd.DataFrame(
+    real_price_insample.values.reshape(-1, 24),
+    index=real_price_insample.index[::24],
+    columns=[f'h{str(hour)}' for hour in range(24)],
+)
 
 fc_DNN_ensemble_2D.head()
 

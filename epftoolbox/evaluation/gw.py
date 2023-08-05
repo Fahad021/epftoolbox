@@ -17,35 +17,27 @@ def gwtest(loss1, loss2, tau=1, conditional=1):
     else:
         instruments = np.ones_like(d)
         T = TT
-    
+
     instruments = np.array(instruments, ndmin=2)
 
     reg = np.ones_like(instruments) * -999
     for jj in range(instruments.shape[0]):
         reg[jj, :] = instruments[jj, :] * d
-    
-    if tau == 1:
-        # print(reg.shape, T)
-        # print(reg.T)
-        betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
-        # print(np.dot(reg.T, betas).shape)
-        err = np.ones((T, 1)) - np.dot(reg.T, betas)
-        r2 = 1 - np.mean(err**2)
-        GWstat = T * r2
-    else:
+
+    if tau != 1:
         raise NotImplementedError
-        zbar = np.mean(reg, -1)
-        nlags = tau - 1
-        # ...
-    
+    # print(reg.shape, T)
+    # print(reg.T)
+    betas = np.linalg.lstsq(reg.T, np.ones(T), rcond=None)[0]
+    # print(np.dot(reg.T, betas).shape)
+    err = np.ones((T, 1)) - np.dot(reg.T, betas)
+    r2 = 1 - np.mean(err**2)
+    GWstat = T * r2
     GWstat *= np.sign(np.mean(d))
     # pval = 1 - scipy.stats.norm.cdf(GWstat)
     # if np.isnan(pval) or pval > .1:
     #     pval = .1
     # return pval
-    
+
     q = reg.shape[0]
-    pval = 1 - scipy.stats.chi2.cdf(GWstat, q)
-    # if np.isnan(pval) or pval > .1:
-    #     pval = .1
-    return pval
+    return 1 - scipy.stats.chi2.cdf(GWstat, q)

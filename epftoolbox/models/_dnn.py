@@ -137,10 +137,7 @@ class DNNModel(object):
         """
         if self.regularization == 'l2':
             return l2(lambda_reg)
-        if self.regularization == 'l1':
-            return l1(lambda_reg)
-        else:
-            return None
+        return l1(lambda_reg) if self.regularization == 'l1' else None
 
     def _build_model(self):
         """Internal method that defines the structure of the DNN
@@ -189,9 +186,7 @@ class DNNModel(object):
 
         output_layer = Dense(self.outputShape, kernel_initializer=self.initializer,
                              kernel_regularizer=self._reg(self.lambda_reg))(past_Dense)
-        model = Model(inputs=[past_data], outputs=[output_layer])
-
-        return model
+        return Model(inputs=[past_data], outputs=[output_layer])
 
     def _obtain_metrics(self, X, Y):
         """Internal method to update the metrics used to train the network
@@ -237,8 +232,8 @@ class DNNModel(object):
             Number of epochs in the validation dataset without improvements
         """
         print(" Best error:\t\t{:.1e}".format(bestError))
-        print(" Best MAE:\t\t{:.2f}".format(bestMAE))                
-        print(" Epochs without improvement:\t{}\n".format(countNoImprovement))
+        print(" Best MAE:\t\t{:.2f}".format(bestMAE))
+        print(f" Epochs without improvement:\t{countNoImprovement}\n")
 
 
     def fit(self, trainX, trainY, valX, valY):
@@ -326,8 +321,7 @@ class DNNModel(object):
             Output of the DNN after making the prediction.
         """
 
-        Ybar = self.model.predict(X, verbose=0)
-        return Ybar
+        return self.model.predict(X, verbose=0)
 
     def clear_session(self):
         """Method to clear the tensorflow session. 
@@ -416,17 +410,24 @@ class DNN(object):
         """
 
         # Defining the trials file name used to extract the optimal hyperparameters
-        trials_file_name = \
-            'DNN_hyperparameters_nl' + str(self.nlayers) + \
-            '_dat' + str(self.dataset) + '_YT' + str(self.years_test) + \
-            '_SF' * (self.shuffle_train) + '_DA' * (self.data_augmentation) + \
-            '_CW' + str(self.calibration_window) + '_' + str(self.experiment_id)
+        trials_file_name = (
+            (
+                (
+                    f'DNN_hyperparameters_nl{str(self.nlayers)}_dat{str(self.dataset)}_YT{str(self.years_test)}'
+                    + '_SF' * (self.shuffle_train)
+                )
+                + '_DA' * (self.data_augmentation)
+                + '_CW'
+            )
+            + str(self.calibration_window)
+            + '_'
+        ) + str(self.experiment_id)
 
         trials_file_path = os.path.join(self.path_hyperparameter_folder, trials_file_name)
 
         # Reading and extracting the best hyperparameters
         trials = pc.load(open(trials_file_path, "rb"))
-        
+
         self.best_hyperparameters = format_best_trial(trials.best_trial)
 
     def _regularize_data(self, Xtrain, Xval, Xtest, Ytrain, Yval):
@@ -486,9 +487,12 @@ class DNN(object):
         """
 
         # Initialize model
-        neurons = [int(self.best_hyperparameters['neurons' + str(k)]) for k in range(1, self.nlayers + 1)
-                   if int(self.best_hyperparameters['neurons' + str(k)]) >= 50]
-            
+        neurons = [
+            int(self.best_hyperparameters[f'neurons{str(k)}'])
+            for k in range(1, self.nlayers + 1)
+            if int(self.best_hyperparameters[f'neurons{str(k)}']) >= 50
+        ]
+
         np.random.seed(int(self.best_hyperparameters['seed']))
 
         self.model = DNNModel(neurons=neurons, n_features=Xtrain.shape[-1], 
@@ -591,19 +595,18 @@ class DNN(object):
         # even though the dataframe contains 15 days of data (next day + last 2 weeks),
         # we provide as parameter the date of interest so that Xtest and Ytest only reflect that
         Xtrain, Ytrain, Xval, Yval, Xtest, _, _ = \
-            _build_and_split_XYs(dfTrain=df_train, features=self.best_hyperparameters, 
+                _build_and_split_XYs(dfTrain=df_train, features=self.best_hyperparameters, 
                                 shuffle_train=True, dfTest=df_test, date_test=next_day_date,
                                 data_augmentation=self.data_augmentation, 
                                 n_exogenous_inputs=len(df_train.columns) - 1)
 
         # Normalizing the input and outputs if needed
         Xtrain, Xval, Xtest, Ytrain, Yval = \
-            self._regularize_data(Xtrain=Xtrain, Xval=Xval, Xtest=Xtest, Ytrain=Ytrain, Yval=Yval)
+                self._regularize_data(Xtrain=Xtrain, Xval=Xval, Xtest=Xtest, Ytrain=Ytrain, Yval=Yval)
 
-        # Recalibrating the neural network and extracting the prediction
-        Yp = self.recalibrate_predict(Xtrain=Xtrain, Ytrain=Ytrain, Xval=Xval, Yval=Yval, Xtest=Xtest)
-
-        return Yp
+        return self.recalibrate_predict(
+            Xtrain=Xtrain, Ytrain=Ytrain, Xval=Xval, Yval=Yval, Xtest=Xtest
+        )
 
 def evaluate_dnn_in_test_dataset(experiment_id, path_datasets_folder=os.path.join('.', 'datasets'), 
                                  path_hyperparameter_folder=os.path.join('.', 'experimental_files'), 
@@ -689,15 +692,28 @@ def evaluate_dnn_in_test_dataset(experiment_id, path_datasets_folder=os.path.joi
                                   begin_test_date=begin_test_date, end_test_date=end_test_date)
     # Defining unique name to save the forecast
 
-    forecast_file_name = 'DNN_forecast_nl' + str(nlayers) + '_dat' + str(dataset) + \
-                         '_YT' + str(years_test) + '_SFH' + str(shuffle_train) + \
-                         '_DA' * data_augmentation + '_CW' + str(calibration_window) + \
-                         '_' + str(experiment_id) + '.csv'
+    forecast_file_name = (
+        (
+            (
+                (
+                    f'DNN_forecast_nl{str(nlayers)}_dat{str(dataset)}_YT{str(years_test)}_SFH{str(shuffle_train)}'
+                    + '_DA' * data_augmentation
+                )
+                + '_CW'
+            )
+            + str(calibration_window)
+            + '_'
+        )
+        + str(experiment_id)
+        + '.csv'
+    )
 
     forecast_file_path = os.path.join(path_recalibration_folder, forecast_file_name)
 
     # Defining empty forecast array and the real values to be predicted in a more friendly format
-    forecast = pd.DataFrame(index=df_test.index[::24], columns=['h' + str(k) for k in range(24)])
+    forecast = pd.DataFrame(
+        index=df_test.index[::24], columns=[f'h{str(k)}' for k in range(24)]
+    )
     real_values = df_test.loc[:, ['Price']].values.reshape(-1, 24)
     real_values = pd.DataFrame(real_values, index=forecast.index, columns=forecast.columns)
 
@@ -718,7 +734,7 @@ def evaluate_dnn_in_test_dataset(experiment_id, path_datasets_folder=os.path.joi
             mae = np.mean(MAE(forecast.values.squeeze(), real_values.values))
             smape = np.mean(sMAPE(forecast.values.squeeze(), real_values.values)) * 100
             print('{} - sMAPE: {:.2f}%  |  MAE: {:.3f}'.format('Final metrics', smape, mae))
-        
+
     else:
         forecast_dates = forecast.index
 
@@ -779,15 +795,10 @@ def format_best_trial(best_trial):
     # Extracting unformatted hyperparameters
     unformatted_hyperparameters = best_trial['misc']['vals']
 
-    formatted_hyperparameters = {}
-
-    # Removing list format
-    for key, val in unformatted_hyperparameters.items():
-        if len(val) > 0:
-            formatted_hyperparameters[key] = val[0]
-        else:
-            formatted_hyperparameters[key] = 0
-
+    formatted_hyperparameters = {
+        key: val[0] if len(val) > 0 else 0
+        for key, val in unformatted_hyperparameters.items()
+    }
     # Reformatting discrete hyperparameters from integer value to keyword
     for key, val in formatted_hyperparameters.items():
         if key == 'activation':
@@ -795,13 +806,11 @@ def format_best_trial(best_trial):
         elif key == 'init':
             hyperparameter_list = ['Orthogonal', 'lecun_uniform', 'glorot_uniform', 'glorot_normal', 
                                    'he_uniform', 'he_normal']
-        elif key == 'scaleX':
-            hyperparameter_list = ['No', 'Norm', 'Norm1', 'Std', 'Median', 'Invariant']
-        elif key == 'scaleY':
-            hyperparameter_list = ['No', 'Norm', 'Norm1', 'Std', 'Median', 'Invariant']
         elif key == 'reg':
             hyperparameter_list = [None, 'l1']
 
+        elif key in ['scaleX', 'scaleY']:
+            hyperparameter_list = ['No', 'Norm', 'Norm1', 'Std', 'Median', 'Invariant']
         if key in ['activation', 'init', 'scaleX', 'scaleY', 'reg']:
             formatted_hyperparameters[key] = hyperparameter_list[val]
 
